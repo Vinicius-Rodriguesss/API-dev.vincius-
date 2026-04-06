@@ -1,10 +1,9 @@
-// cd src/module/AI
-// npx tsx src/module/AI/AIservice.ts
-import { prisma } from "../../../lib/prisma.js"
+import { buscarPrompt, listarPrompts } from "../../../service/Prompt/index.js";
 
-const getAllResultPrompt = async () => {
-const users = await prisma.prompt.findMany()
-return users;
+export async function getAllResultPrompt() {
+  return listarPrompts();
 }
 
-export default getAllResultPrompt;
+export async function getLatestResultPrompt() {
+  return buscarPrompt();
+}

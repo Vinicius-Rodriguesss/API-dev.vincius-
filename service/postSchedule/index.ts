@@ -1,20 +1,30 @@
 import cron from "node-cron";
-import { gerarResposta } from "../IA/index.js";
+import { gerarRespostaESalvar } from "../IA/index.js";
+
+let scheduleStarted = false;
 
 const Scheduling = () => {
+  if (scheduleStarted) {
+    return;
+  }
+
+  scheduleStarted = true;
   console.log("funcionando...");
 
   cron.schedule(
-    "0 10 * * 1",
+    "55 9 * * 1",
     async () => {
-      console.log("gerando post...");
+      try {
+        console.log("gerando post...");
 
-      const resposta = await gerarResposta({
-        tema: "IA no desenvolvimento",
-      });
+        const resposta = await gerarRespostaESalvar({
+        });
 
-      console.log(resposta);
-      console.log("post enviado");
+        console.log("post gerado", resposta.id);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "Erro ao gerar o post.";
+        console.error("Erro no agendamento da IA:", message);
+      }
     },
     {
       timezone: "America/Sao_Paulo",

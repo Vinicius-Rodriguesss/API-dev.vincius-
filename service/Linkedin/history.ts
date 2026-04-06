@@ -76,6 +76,17 @@ export function verifyPostNotPublished(promptId: number, texto: string): void {
   }
 }
 
+export function isPostAlreadyPublishedError(error: unknown): boolean {
+  if (!(error instanceof Error)) {
+    return false;
+  }
+
+  return (
+    error.message.includes("ja foi publicado") ||
+    error.message.includes("ja foi publicado anteriormente")
+  );
+}
+
 export function registerPublishedPost(
   promptId: number,
   texto: string,

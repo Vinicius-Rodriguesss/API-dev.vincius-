@@ -1,6 +1,11 @@
 # LinkedIn API
 
-API Node.js com Express, Prisma e integração com Gemini para gerar conteúdos e consultar prompts salvos no banco.
+API em Node.js + TypeScript para:
+
+- gerar conteudo com Gemini
+- salvar prompts no PostgreSQL com Prisma
+- publicar no LinkedIn
+- expor endpoints para o portfolio
 
 ## Stack
 
@@ -13,99 +18,298 @@ API Node.js com Express, Prisma e integração com Gemini para gerar conteúdos 
 
 ## Estrutura
 
-- `src/` API principal
-- `service/` serviços de IA e agendamento
+- `src/` rotas, controllers, services HTTP e middleware
+- `service/IA/` geracao de conteudo com IA
+- `service/Linkedin/` autenticacao, publicacao e historico
+- `service/Prompt/` leitura e parse dos prompts salvos
+- `service/postSchedule/` agendamento da geracao
+- `service/LinkedinScheduler/` agendamento e publicacao inicial
 - `prisma/` schema e migrations
-- `generated/` client gerado pelo Prisma
+- `lib/` conexao com Prisma
 
-## Pré-requisitos
+## Variaveis de ambiente
 
-- Node.js 20+
-- Docker Desktop
-- npm
-
-## Variáveis de ambiente
-
-Crie ou ajuste o arquivo `.env` com os valores necessários:
+Crie um arquivo `.env` na raiz:
 
 ```env
 DATABASE_URL="postgresql://usuario:senha@host:5432/banco"
-GEMINI_API_KEY="sua_chave_aqui"
+GEMINI_API_KEY="sua_chave_gemini"
 PORT=5001
+API_KEY="sua_api_key"
+
+LINKEDIN_CLIENT_ID="seu_client_id"
+LINKEDIN_CLIENT_SECRET="seu_client_secret"
+LINKEDIN_REDIRECT_URI="http://localhost:5000/callback"
+LINKEDIN_PUBLISH_ON_STARTUP="true"
 ```
 
-## Como subir rapidamente
-
-Hoje, a forma mais rápida e estável de rodar o projeto é:
-
-1. Subir apenas o banco com Docker
-2. Rodar a API localmente
-
-### 1. Subir o banco
-
-```bash
-docker compose up -d db
-```
-
-O Postgres ficará disponível na porta `5432`.
-
-### 2. Rodar a API
+## Como rodar localmente
 
 ```bash
 npm install
-npm start
+npm run typecheck
+npm run dev
 ```
 
-A API sobe na porta definida em `PORT`. No momento, o projeto usa `tsx src/server.ts` no script `start`.
-
-## Endpoint disponível
-
-### Listar prompts
-
-```http
-GET /prompts
-```
-
-Exemplo:
+API local:
 
 ```bash
-curl http://localhost:5001/prompts
+http://localhost:5001
 ```
 
-## Banco de dados
+## Como subir no servidor
 
-O modelo atual salvo no Prisma é:
+Essa API foi pensada para rodar em servidor Node tradicional, VPS, VM ou Docker.
 
-- `Prompt`
-  - `id`
-  - `resultPrompt`
+### Opcao 1. Servidor com Node
 
-Se precisar gerar o client do Prisma manualmente:
+#### 1. Instale as dependencias
+
+```bash
+npm install
+```
+
+#### 2. Gere o build completo
 
 ```bash
 npm run build
 ```
 
-## Docker
+#### 3. Suba a API
 
-O projeto possui estes arquivos Docker:
+```bash
+npm run start
+```
 
-- `Dockerfile`
-- `docker-compose.yml`
-- `.dockerignore`
+O `start` executa:
 
-Neste momento, o fluxo mais seguro é usar o Docker para o banco e deixar a API rodando localmente.
+```bash
+node dist/src/server.js
+```
 
-Se você quiser rodar a API e o banco 100% via Docker, ainda vale ajustar os arquivos Docker para refletirem exatamente a forma atual como a aplicação inicia.
+Observacao:
 
-## Parar os containers
+- o projeto usa `prestart`, entao o TypeScript recompila antes de iniciar
+
+### Opcao 2. Servidor com PM2
+
+#### 1. Instale o PM2
+
+```bash
+npm install -g pm2
+```
+
+#### 2. Instale dependencias
+
+```bash
+npm install
+```
+
+#### 3. Gere o build
+
+```bash
+npm run build
+```
+
+#### 4. Suba a API
+
+```bash
+pm2 start npm --name linkedin-api -- run start
+```
+
+#### 5. Salve a configuracao
+
+```bash
+pm2 save
+pm2 startup
+```
+
+### Opcao 3. Docker
+
+#### 1. Configure o `.env`
+
+Preencha todas as variaveis antes do build.
+
+#### 2. Gere a imagem
+
+```bash
+docker build -t linkedin-api .
+```
+
+#### 3. Rode o container
+
+```bash
+docker run -d --name linkedin-api -p 5001:5001 --env-file .env linkedin-api
+```
+
+### Opcao 4. docker compose
+
+O projeto possui `docker-compose.yml` para subir a API:
+
+```bash
+docker compose up -d --build
+```
+
+Para parar:
 
 ```bash
 docker compose down
 ```
 
-Para remover também o volume do Postgres:
+## Como validar se subiu
+
+Use o healthcheck:
 
 ```bash
-docker compose down -v
+curl http://localhost:5001/health
+```
+
+Resposta esperada:
+
+```json
+{
+  "status": "ok"
+}
+```
+
+## Protecao da API
+
+Todos os endpoints, com excecao de `/health`, exigem `API_KEY`.
+
+Importante:
+
+- a chave nao deve ser enviada na URL
+- a chave deve ser enviada no header da requisicao
+
+Voce pode enviar a chave de duas formas.
+
+### x-api-key
+
+```http
+x-api-key: SUA_API_KEY
+```
+
+### Authorization Bearer
+
+```http
+Authorization: Bearer SUA_API_KEY
+```
+
+Exemplo:
+
+```bash
+curl http://localhost:5001/prompts/latest -H "x-api-key: SUA_API_KEY"
+```
+
+Exemplo com `Authorization`:
+
+```bash
+curl http://localhost:5001/prompts/latest -H "Authorization: Bearer SUA_API_KEY"
+```
+
+Exemplo com `fetch`:
+
+```ts
+fetch("http://localhost:5001/prompts/latest", {
+  headers: {
+    "x-api-key": "SUA_API_KEY"
+  }
+});
+```
+
+## Endpoints
+
+### Health
+
+```http
+GET /health
+```
+
+### Prompts
+
+Lista todos os prompts salvos:
+
+```http
+GET /prompts
+```
+
+Busca o ultimo prompt salvo:
+
+```http
+GET /prompts/latest
+```
+
+### Portfolio
+
+Lista os posts prontos para consumo:
+
+```http
+GET /portfolio/posts
+```
+
+Busca o ultimo post pronto:
+
+```http
+GET /portfolio/posts/latest
+```
+
+## Comportamento da aplicacao
+
+Quando a API sobe:
+
+- inicia o Express
+- sobe o endpoint `/health`
+- registra o agendamento da IA
+- registra o agendamento do LinkedIn
+- gera e publica um novo post ao iniciar, se `LINKEDIN_PUBLISH_ON_STARTUP="true"`
+
+Agendamentos atuais:
+
+- IA gera e salva: `09:55` de segunda-feira
+- LinkedIn publica: `10:00` de segunda-feira
+- timezone: `America/Sao_Paulo`
+
+## Observacoes importantes
+
+### 1. O LinkedIn usa arquivos locais
+
+Os arquivos abaixo guardam estado local:
+
+- `linkedin-token.json`
+- `linkedin-post-history.json`
+
+Se o servidor perder esses arquivos, o fluxo de publicacao pode exigir nova autenticacao.
+
+### 2. O build depende do Prisma
+
+O comando abaixo executa Prisma + compilacao TypeScript:
+
+```bash
+npm run build
+```
+
+Hoje ele roda:
+
+```bash
+prisma generate && tsc
+```
+
+### 3. Nao e um projeto serverless-first
+
+Essa API usa cron dentro da aplicacao e estado local para a parte do LinkedIn.
+
+Os ambientes mais indicados sao:
+
+- VPS
+- VM
+- Docker
+- servidor Node tradicional
+
+## Scripts
+
+```bash
+npm run dev
+npm run build
+npm run start
+npm run typecheck
 ```
