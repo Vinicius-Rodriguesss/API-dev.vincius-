@@ -34,8 +34,8 @@ Crie um arquivo `.env` na raiz:
 ```env
 DATABASE_URL="postgresql://usuario:senha@host:5432/banco"
 GEMINI_API_KEY="sua_chave_gemini"
+NEWS_API_KEY="sua_chave_news_api"
 PORT=5001
-API_KEY="sua_api_key"
 
 LINKEDIN_CLIENT_ID="seu_client_id"
 LINKEDIN_CLIENT_SECRET="seu_client_secret"
@@ -170,51 +170,6 @@ Resposta esperada:
 {
   "status": "ok"
 }
-```
-
-## Protecao da API
-
-Todos os endpoints, com excecao de `/health`, exigem `API_KEY`.
-
-Importante:
-
-- a chave nao deve ser enviada na URL
-- a chave deve ser enviada no header da requisicao
-
-Voce pode enviar a chave de duas formas.
-
-### x-api-key
-
-```http
-x-api-key: SUA_API_KEY
-```
-
-### Authorization Bearer
-
-```http
-Authorization: Bearer SUA_API_KEY
-```
-
-Exemplo:
-
-```bash
-curl http://localhost:5001/prompts/latest -H "x-api-key: SUA_API_KEY"
-```
-
-Exemplo com `Authorization`:
-
-```bash
-curl http://localhost:5001/prompts/latest -H "Authorization: Bearer SUA_API_KEY"
-```
-
-Exemplo com `fetch`:
-
-```ts
-fetch("http://localhost:5001/prompts/latest", {
-  headers: {
-    "x-api-key": "SUA_API_KEY"
-  }
-});
 ```
 
 ## Endpoints

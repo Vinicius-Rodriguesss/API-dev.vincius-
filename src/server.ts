@@ -3,7 +3,6 @@ import Routers from "./Routes/index.js"
 import Scheduling from "../service/postSchedule/index.js";
 import cors from "cors"
 import agendarPostagemLinkedin from "../service/LinkedinScheduler/index.js";
-import { validateApiKey } from "./middleware/apiKey.js";
 const app = express()
 
 
@@ -18,7 +17,6 @@ app.use(express.json())
 app.get("/health", (req, res) => {
   return res.json({ status: "ok" })
 })
-app.use(validateApiKey)
 app.use('/', Routers)
 
 app.listen(port, () => {
